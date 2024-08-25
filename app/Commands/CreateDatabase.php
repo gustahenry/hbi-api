@@ -10,15 +10,23 @@ class CreateDatabase extends BaseCommand
 {
     protected $group = 'Database';
     protected $name = 'db:create';
-    protected $description = 'Cria o banco de dados, caso não exista, e efetua as migrações.';
+    protected $description = 'Cria o banco de dados padrão, caso não exista, e executa as migrações.';
 
     public function run(array $params)
     {
-        // Conectar ao banco de dados usando as configurações do arquivo Database.php
-        $dbConfig = Database::connect();
+
+        $dbConfigDefault = Database::connect('default');
+        
+        $this->createDatabaseIfNotExists($dbConfigDefault);
+
+        CLI::write('Executando migrações para o banco de dados padrão...', 'yellow');
+        $this->runMigrations('default');
+    }
+
+    private function createDatabaseIfNotExists($dbConfig)
+    {
         $databaseName = $dbConfig->getDatabase();
 
-        // Criar o banco de dados se ele não existir
         $dbConnection = new \mysqli($dbConfig->hostname, $dbConfig->username, $dbConfig->password);
 
         if ($dbConnection->connect_error) {
@@ -30,18 +38,17 @@ class CreateDatabase extends BaseCommand
             CLI::write('Banco de dados `' . $databaseName . '` foi criado ou já existe.', 'green');
         } else {
             CLI::error('Erro ao criar o banco de dados: ' . $dbConnection->error);
-            $dbConnection->close();
-            return;
         }
 
         $dbConnection->close();
+    }
 
-        // Executar as migrações
-        CLI::write('Executando migrações...', 'yellow');
+    private function runMigrations($group)
+    {
+        CLI::write("Executando migrações para o grupo '$group'...", 'yellow');
         chdir(ROOTPATH);
-        exec('php spark migrate', $output, $returnVar);
+        exec('php spark migrate --group ' . $group, $output, $returnVar);
 
-        // Mostrar a saída do comando de migração
         CLI::write(implode("\n", $output), $returnVar === 0 ? 'green' : 'red');
     }
 }
