@@ -211,6 +211,45 @@ class Contacts extends BaseController
         }
     }
 
+    public function delete($id)
+{
+    // Verifica se o ID é válido
+    if (!is_numeric($id)) {
+        return $this->response->setStatusCode(400)->setJSON([
+            'status' => 'error',
+            'message' => 'ID inválido.'
+        ]);
+    }
+
+    try {
+        $this->db->transBegin();
+
+        $this->db->table('contacts')->delete(['id' => $id]);
+
+        $this->db->table('address')->delete(['id_contact' => $id]);
+
+        $this->db->table('phone')->delete(['id_contact' => $id]);
+
+        $this->db->table('email')->delete(['id_contact' => $id]);
+
+        $this->db->transCommit();
+
+        $this->cache->delete('contacts_list');
+
+        return $this->response->setStatusCode(200)->setJSON([
+            'status' => 'success',
+            'message' => 'Contato excluído com sucesso.'
+        ]);
+    } catch (\Exception $e) {
+        $this->db->transRollback();
+        return $this->response->setStatusCode(500)->setJSON([
+            'status' => 'error',
+            'message' => 'Erro ao excluir contato: ' . $e->getMessage()
+        ]);
+    }
+}
+
+
     public function update($id)
     {
         $request = $this->request->getJSON(true);
