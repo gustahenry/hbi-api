@@ -1,68 +1,91 @@
-# CodeIgniter 4 Application Starter
+# Projeto de Contatos
 
-## What is CodeIgniter?
+## Descrição
 
-CodeIgniter is a PHP full-stack web framework that is light, fast, flexible and secure.
-More information can be found at the [official site](https://codeigniter.com).
+Este projeto é uma aplicação de gerenciamento de contatos utilizando o framework CodeIgniter 4. A aplicação permite criar, ler, atualizar e excluir contatos, além de gerenciar suas informações associadas, como endereços, números de telefone e e-mails.
 
-This repository holds a composer-installable app starter.
-It has been built from the
-[development repository](https://github.com/codeigniter4/CodeIgniter4).
+## Funcionalidades
 
-More information about the plans for version 4 can be found in [CodeIgniter 4](https://forum.codeigniter.com/forumdisplay.php?fid=28) on the forums.
+- **Visualizar Contatos**: Lista todos os contatos com suas informações associadas.
+- **Criar Contato**: Adiciona um novo contato com informações de nome, descrição, endereço, telefone e e-mail.
+- **Atualizar Contato**: Atualiza as informações de um contato existente.
+- **Excluir Contato**: Remove um contato e suas informações associadas.
 
-You can read the [user guide](https://codeigniter.com/user_guide/)
-corresponding to the latest version of the framework.
+## Tecnologias Utilizadas
 
-## Installation & updates
+- **Framework**: CodeIgniter 4
+- **Banco de Dados**: MySQL
+- **Cache**: CodeIgniter Cache
+- **Validação**: CodeIgniter Validation
+- **API Externa**: ViaCep (para validação e busca de endereços)
 
-`composer create-project codeigniter4/appstarter` then `composer update` whenever
-there is a new release of the framework.
+## Estrutura do Projeto
 
-When updating, check the release notes to see if there are any changes you might need to apply
-to your `app` folder. The affected files can be copied or merged from
-`vendor/codeigniter4/framework/app`.
+- **Controllers**: Gerencia as requisições HTTP e executa as operações CRUD para contatos.
+  - `Contacts.php`: Controlador principal que lida com operações de contatos.
+- **Models**: Modelos para interagir com o banco de dados (não incluídos explicitamente no exemplo).
+- **Views**: Arquivos de visualização para exibir a interface do usuário (não incluídos explicitamente no exemplo).
 
-## Setup
+## Requisitos
 
-Copy `env` to `.env` and tailor for your app, specifically the baseURL
-and any database settings.
+- PHP 7.4 ou superior
+- MySQL
+- Composer
+- CodeIgniter 4
 
-## Important Change with index.php
+## Instalação
 
-`index.php` is no longer in the root of the project! It has been moved inside the *public* folder,
-for better security and separation of components.
+1. **Clone o Repositório**:
+   ```bash
+   git clone https://github.com/gustahenry/hbi-api.git
+   cd hbi-api
 
-This means that you should configure your web server to "point" to your project's *public* folder, and
-not to the project root. A better practice would be to configure a virtual host to point there. A poor practice would be to point your web server to the project root and expect to enter *public/...*, as the rest of your logic and the
-framework are exposed.
+2. **Instale as Dependências**:
+   ```bash
+   composer install
 
-**Please** read the user guide for a better explanation of how CI4 works!
+3. **Configure o Banco de Dados**:
 
-## Repository Management
+- Copie o arquivo .env.example para um novo arquivo .env:
+   ```bash
+   cp .env.example .env
 
-We use GitHub issues, in our main repository, to track **BUGS** and to track approved **DEVELOPMENT** work packages.
-We use our [forum](http://forum.codeigniter.com) to provide SUPPORT and to discuss
-FEATURE REQUESTS.
+- Abra o arquivo .env em um editor de texto e configure as seguintes variáveis para conectar ao seu banco de dados:
 
-This repository is a "distribution" one, built by our release preparation script.
-Problems with it can be raised on our forum, or as issues in the main repository.
+ ```bash
+   # Configurações do Banco de Dados
+    database.default.hostname = localhost
+    database.default.database = seu_banco_de_dados
+    database.default.username = seu_usuario
+    database.default.password = sua_senha
+    database.default.DBDriver = MySQLi  # Altere para o driver de banco de dados que você está usando
+```
+- database.default.hostname: O hostname do servidor de banco de dados (por exemplo, localhost ou o IP do servidor).
+- database.default.database: O nome do banco de dados que você criou para o projeto.
+- database.default.username: O nome de usuário para acessar o banco de dados.
+- database.default.password: A senha correspondente ao nome de usuário.
+- database.default.DBDriver: O driver do banco de dados utilizado (por exemplo, MySQLi, Postgre, SQLite, etc.).
 
-## Server Requirements
+4. **Crie as Tabelas no Banco de Dados**:
 
-PHP version 8.1 or higher is required, with the following extensions installed:
+Você pode excultar o comando:
 
-- [intl](http://php.net/manual/en/intl.requirements.php)
-- [mbstring](http://php.net/manual/en/mbstring.installation.php)
+```bash
+php spark db:create
+```
+que ira gerar o banco de dados e rodar as migrates, caso ja tenha o banco de dados criado pode usar o:
 
-> [!WARNING]
-> - The end of life date for PHP 7.4 was November 28, 2022.
-> - The end of life date for PHP 8.0 was November 26, 2023.
-> - If you are still using PHP 7.4 or 8.0, you should upgrade immediately.
-> - The end of life date for PHP 8.1 will be December 31, 2025.
+```bash
+php spark migrate
+```
 
-Additionally, make sure that the following extensions are enabled in your PHP:
+4. **Inicie o Servidor de Desenvolvimento**:
 
-- json (enabled by default - don't turn it off)
-- [mysqlnd](http://php.net/manual/en/mysqlnd.install.php) if you plan to use MySQL
-- [libcurl](http://php.net/manual/en/curl.requirements.php) if you plan to use the HTTP\CURLRequest library
+Use o comando abaixo para iniciar o servidor local de desenvolvimento:
+
+```bash
+php spark serve
+```
+
+A aplicação estará disponível em http://localhost:8080.
+
