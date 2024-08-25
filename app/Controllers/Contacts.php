@@ -6,16 +6,19 @@ use App\Controllers\BaseController;
 use CodeIgniter\HTTP\ResponseInterface;
 use CodeIgniter\Database\Exceptions\DatabaseException;
 use CodeIgniter\Cache\CacheInterface;
+use CodeIgniter\Validation\ValidationInterface;
 
 class Contacts extends BaseController
 {
     protected $db;
     protected $cache;
+    protected $validation;
 
     public function __construct()
     {
         $this->db = \Config\Database::connect();
         $this->cache = \Config\Services::cache();
+        $this->validation = \Config\Services::validation();
     }
 
     public function index()
@@ -45,8 +48,8 @@ class Contacts extends BaseController
         
                     if (!isset($contacts[$contactId])) {
                         $contacts[$contactId] = [
-                            'name' => $row['name'],
-                            'description' => $row['description'],
+                            'name' => esc($row['name']),
+                            'description' => esc($row['description']),
                             'address' => null,
                             'phone' => null,
                             'email' => null,
@@ -55,26 +58,26 @@ class Contacts extends BaseController
         
                     if ($row['zip_code']) {
                         $contacts[$contactId]['address'] = [
-                            'zip_code' => $row['zip_code'],
-                            'country' => $row['country'],
-                            'state' => $row['state'],
-                            'street_address' => $row['street_address'],
-                            'address_number' => $row['address_number'],
-                            'city' => $row['city'],
-                            'address_line' => $row['address_line'],
-                            'neighborhood' => $row['neighborhood'],
+                            'zip_code' => esc($row['zip_code']),
+                            'country' => esc($row['country']),
+                            'state' => esc($row['state']),
+                            'street_address' => esc($row['street_address']),
+                            'address_number' => esc($row['address_number']),
+                            'city' => esc($row['city']),
+                            'address_line' => esc($row['address_line']),
+                            'neighborhood' => esc($row['neighborhood']),
                         ];
                     }
         
                     if ($row['phone_number']) {
                         $contacts[$contactId]['phone'] = [
-                            'phone' => $row['phone_number'],
+                            'phone' => esc($row['phone_number']),
                         ];
                     }
         
                     if ($row['email_address']) {
                         $contacts[$contactId]['email'] = [
-                            'email' => $row['email_address'],
+                            'email' => esc($row['email_address']),
                         ];
                     }
                 }
@@ -99,19 +102,40 @@ class Contacts extends BaseController
 
     public function create()
     {
+        $request = $this->request->getJSON(true);
+
+        $request['address']['zip_code'] = $this->sanitizeZipCode($request['address']['zip_code']);
+        $request['phone']['phone'] = $this->sanitizePhoneNumber($request['phone']['phone']);
+
+        log_message('debug', 'Comprimento do zip_code: ' . strlen($request['address']['zip_code']));
+        log_message('debug', 'Comprimento do phone: ' . strlen($request['phone']['phone']));
+
+        $validationRules = [
+            'name' => 'required|string|max_length[255]',
+            'description' => 'required|string|max_length[255]',
+            'address.zip_code' => 'required|string|max_length[9]',
+            'address.country' => 'required|string|max_length[100]',
+            'address.state' => 'required|string|max_length[100]',
+            'address.street_address' => 'required|string|max_length[255]',
+            'address.address_number' => 'required|string|max_length[10]',
+            'address.city' => 'required|string|max_length[100]',
+            'address.address_line' => 'required|string|max_length[255]',
+            'address.neighborhood' => 'required|string|max_length[100]',
+            'phone.phone' => 'required|string|max_length[14]',
+            'email.email' => 'required|string|valid_email|max_length[255]',
+        ];
+
+        if (!$this->validate($validationRules)) {
+            return $this->response->setStatusCode(400)->setJSON([
+                'status' => 'error',
+                'message' => $this->validator->getErrors()
+            ]);
+        }
+
         try {
-            $request = $this->request->getJSON(true);
-
-            if (!$request) {
-                return $this->response->setStatusCode(400)->setJSON([
-                    'status' => 'error',
-                    'message' => 'Falha ao analisar o JSON. Verifique a formatação da solicitação.'
-                ]);
-            }
-
             $contactData = [
-                'name' => $request['name'] ?? null,
-                'description' => $request['description'] ?? null,
+                'name' => esc($request['name']),
+                'description' => esc($request['description']),
             ];
 
             $this->db->transBegin();
@@ -123,17 +147,26 @@ class Contacts extends BaseController
                 $currentDateTime = date('Y-m-d H:i:s');
 
                 if (isset($request['address'])) {
-                    $addressData = array_merge($request['address'], ['id_contact' => $contactId, 'created_at' => $currentDateTime]);
+                    $addressData = array_merge(
+                        $request['address'], 
+                        ['id_contact' => $contactId, 'created_at' => $currentDateTime]
+                    );
                     $this->db->table('address')->insert($addressData);
                 }
 
                 if (isset($request['phone'])) {
-                    $phoneData = array_merge($request['phone'], ['id_contact' => $contactId, 'created_at' => $currentDateTime]);
+                    $phoneData = array_merge(
+                        $request['phone'], 
+                        ['id_contact' => $contactId, 'created_at' => $currentDateTime]
+                    );
                     $this->db->table('phone')->insert($phoneData);
                 }
 
                 if (isset($request['email'])) {
-                    $emailData = array_merge($request['email'], ['id_contact' => $contactId, 'created_at' => $currentDateTime]);
+                    $emailData = array_merge(
+                        $request['email'], 
+                        ['id_contact' => $contactId, 'created_at' => $currentDateTime]
+                    );
                     $this->db->table('email')->insert($emailData);
                 }
 
@@ -162,15 +195,38 @@ class Contacts extends BaseController
     }
 
     public function update($id)
-    {   
+    {
+        $request = $this->request->getJSON(true);
+
+        $request['address']['zip_code'] = $this->sanitizeZipCode($request['address']['zip_code']);
+        $request['phone']['phone'] = $this->sanitizePhoneNumber($request['phone']['phone']);
+
+        $validationRules = [
+            'name' => 'required|string|max_length[255]',
+            'description' => 'required|string|max_length[255]',
+            'address.zip_code' => 'required|string|max_length[9]',
+            'address.country' => 'required|string|max_length[100]',
+            'address.state' => 'required|string|max_length[100]',
+            'address.street_address' => 'required|string|max_length[255]',
+            'address.address_number' => 'required|string|max_length[10]',
+            'address.city' => 'required|string|max_length[100]',
+            'address.address_line' => 'required|string|max_length[255]',
+            'address.neighborhood' => 'required|string|max_length[100]',
+            'phone.phone' => 'required|string|max_length[14]',
+            'email.email' => 'required|string|valid_email|max_length[255]',
+        ];
+
+        if (!$this->validate($validationRules)) {
+            return $this->response->setStatusCode(400)->setJSON([
+                'status' => 'error',
+                'message' => $this->validator->getErrors()
+            ]);
+        }
+
         try {
-
-            $request = $this->request->getJSON(true);
-
             $this->db->transBegin();
 
             try {
-
                 $contact = $this->db->table('contacts')->where('id', $id)->get()->getRow();
                 if (!$contact) {
                     return $this->response->setStatusCode(404)
@@ -178,72 +234,105 @@ class Contacts extends BaseController
                 }
 
                 $contactData = [
-                    'name' => $request['name'] ?? null,
-                    'description' => $request['description'] ?? null,
+                    'name' => esc($request['name']),
+                    'description' => esc($request['description']),
                 ];
                 $this->db->table('contacts')->where('id', $id)->update($contactData);
 
                 if (isset($request['address'])) {
-                    $addressData = array_merge($request['address'], ['id_contact' => $id]);
+                    $addressData = array_merge(
+                        $request['address'], 
+                        ['updated_at' => date('Y-m-d H:i:s')]
+                    );
                     $this->db->table('address')->where('id_contact', $id)->update($addressData);
                 }
 
                 if (isset($request['phone'])) {
-                    $phoneData = $request['phone'];
+                    $phoneData = array_merge(
+                        $request['phone'], 
+                        ['updated_at' => date('Y-m-d H:i:s')]
+                    );
                     $this->db->table('phone')->where('id_contact', $id)->update($phoneData);
                 }
 
                 if (isset($request['email'])) {
-                    $emailData = $request['email'];
+                    $emailData = array_merge(
+                        $request['email'], 
+                        ['updated_at' => date('Y-m-d H:i:s')]
+                    );
                     $this->db->table('email')->where('id_contact', $id)->update($emailData);
                 }
 
                 $this->db->transCommit();
-
+                
                 $this->cache->delete('contacts_list');
 
-                return $this->response->setStatusCode(200)
-                      ->setJSON(['status' => 'success', 'message' => 'Contato atualizado com sucesso']);
-
-            } catch (DatabaseException $e) {
+                return $this->response->setStatusCode(200)->setJSON([
+                    'status' => 'success',
+                    'message' => 'Contato atualizado com sucesso.'
+                ]);
+            } catch (\Exception $e) {
                 $this->db->transRollback();
-                return $this->response->setJSON(['status' => 'error', 'message' => $e->getMessage()]);
+                return $this->response->setStatusCode(500)->setJSON([
+                    'status' => 'error',
+                    'message' => 'Erro ao atualizar contato: ' . $e->getMessage()
+                ]);
             }
-        }catch (\Exception $e) {
-            $this->db->transRollback();
-            return $this->response->setStatusCode(500)
-                                  ->setJSON(['status' => 'error', 'message' => 'Erro ao atualizar contato: ' . $e->getMessage()]);
+        } catch (\Exception $e) {
+            return $this->response->setStatusCode(500)->setJSON([
+                'status' => 'error',
+                'message' => 'Houve um erro ao processar sua solicitação: ' . $e->getMessage()
+            ]);
         }
     }
 
     public function delete($id)
     {
-        $this->db->transBegin();
-
         try {
+            $this->db->transBegin();
 
-            $contact = $this->db->table('contacts')->where('id', $id)->get()->getRow();
-            if (!$contact) {
-                return $this->response->setStatusCode(404)
-                                    ->setJSON(['status' => 'error', 'message' => 'Contato não encontrado']);
+            try {
+                $contact = $this->db->table('contacts')->where('id', $id)->get()->getRow();
+                if (!$contact) {
+                    return $this->response->setStatusCode(404)
+                                        ->setJSON(['status' => 'error', 'message' => 'Contato não encontrado']);
+                }
+
+                $this->db->table('contacts')->where('id', $id)->delete();
+                $this->db->table('address')->where('id_contact', $id)->delete();
+                $this->db->table('phone')->where('id_contact', $id)->delete();
+                $this->db->table('email')->where('id_contact', $id)->delete();
+
+                $this->db->transCommit();
+                
+                $this->cache->delete('contacts_list');
+
+                return $this->response->setStatusCode(200)->setJSON([
+                    'status' => 'success',
+                    'message' => 'Contato excluído com sucesso.'
+                ]);
+            } catch (\Exception $e) {
+                $this->db->transRollback();
+                return $this->response->setStatusCode(500)->setJSON([
+                    'status' => 'error',
+                    'message' => 'Erro ao excluir contato: ' . $e->getMessage()
+                ]);
             }
-
-            $this->db->table('address')->where('id_contact', $id)->delete();
-
-            $this->db->table('phone')->where('id_contact', $id)->delete();
-
-            $this->db->table('email')->where('id_contact', $id)->delete();
-
-            $this->db->table('contacts')->where('id', $id)->delete();
-
-            $this->db->transCommit();
-
-            $this->cache->delete('contacts_list');
-
-            return $this->response->setJSON(['status' => 'success', 'message' => 'Contato excluído com sucesso']);
-        } catch (DatabaseException $e) {
-            $this->db->transRollback();
-            return $this->response->setJSON(['status' => 'error', 'message' => $e->getMessage()]);
+        } catch (\Exception $e) {
+            return $this->response->setStatusCode(500)->setJSON([
+                'status' => 'error',
+                'message' => 'Houve um erro ao processar sua solicitação: ' . $e->getMessage()
+            ]);
         }
+    }
+
+    private function sanitizeZipCode($zipCode)
+    {
+        return substr(preg_replace('/[^0-9]/', '', $zipCode), 0, 8);
+    }
+
+    private function sanitizePhoneNumber($phoneNumber)
+    {
+        return substr(preg_replace('/[^0-9]/', '', $phoneNumber), 0, 11);
     }
 }
