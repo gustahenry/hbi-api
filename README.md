@@ -19,13 +19,6 @@ Este projeto é uma aplicação de gerenciamento de contatos utilizando o framew
 - **Validação**: CodeIgniter Validation
 - **API Externa**: ViaCep (para validação e busca de endereços)
 
-## Estrutura do Projeto
-
-- **Controllers**: Gerencia as requisições HTTP e executa as operações CRUD para contatos.
-  - `Contacts.php`: Controlador principal que lida com operações de contatos.
-- **Models**: Modelos para interagir com o banco de dados (não incluídos explicitamente no exemplo).
-- **Views**: Arquivos de visualização para exibir a interface do usuário (não incluídos explicitamente no exemplo).
-
 ## Requisitos
 
 - PHP 7.4 ou superior
