@@ -71,105 +71,134 @@ class Contacts extends BaseController
                 }
             }
     
-            return $this->response->setJSON(['contacts' => array_values($contacts)]);
+            return $this->response->setStatusCode(200)->setJSON([
+                'status' => 'success',
+                'data' => array_values($contacts)
+            ]);
             
         } catch (\Exception $e) {
             log_message('error', $e->getMessage());
     
-            return $this->response->setJSON([
+            return $this->response->setStatusCode(500)->setJSON([
                 'status' => 'error',
-                'message' => 'Houve um erro ao processar sua solicitação.',
-            ])->setStatusCode(500);
+                'message' => 'Houve um erro ao processar sua solicitação.'
+            ]);
         }
     }
     
     public function create()
     {
-        
-        $request = $this->request->getJSON(true);
-
-        if (!$request) {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Failed to parse JSON.']);
-        }
-
-        $contactData = [
-            'name' => $request['name'] ?? null,
-            'description' => $request['description'] ?? null,
-        ];
-
-        $this->db->transBegin();
-
         try {
-            $this->db->table('contacts')->insert($contactData);
-            $contactId = $this->db->insertID();
+            $request = $this->request->getJSON(true);
 
-            $currentDateTime = date('Y-m-d H:i:s');
-
-            if (isset($request['address'])) {
-                $addressData = array_merge($request['address'], ['id_contact' => $contactId, 'created_at' => $currentDateTime]);
-                $this->db->table('address')->insert($addressData);
-            }
-
-            if (isset($request['phone'])) {
-                $phoneData = array_merge($request['phone'], ['id_contact' => $contactId, 'created_at' => $currentDateTime]);
-                $this->db->table('phone')->insert($phoneData);
-            }
-
-            if (isset($request['email'])) {
-                $emailData = array_merge($request['email'], ['id_contact' => $contactId, 'created_at' => $currentDateTime]);
-                $this->db->table('email')->insert($emailData);
-            }
-
-            $this->db->transCommit();
-            
-            return $this->response->setJSON(['status' => 'success', 'message' => 'Contato criado com sucesso']);
-        } catch (\Exception $e) {
-            $this->db->transRollback();
-            return $this->response->setJSON(['status' => 'error', 'message' => $e->getMessage()]);
-        }
-    }
-
-    public function update($id)
-    {
-        $request = $this->request->getJSON(true);
-
-        $this->db->transBegin();
-
-        try {
-
-            $contact = $this->db->table('contacts')->where('id', $id)->get()->getRow();
-            if (!$contact) {
-                return $this->response->setStatusCode(404)
-                                    ->setJSON(['status' => 'error', 'message' => 'Contato não encontrado']);
+            if (!$request) {
+                return $this->response->setStatusCode(400)->setJSON([
+                    'status' => 'error',
+                    'message' => 'Falha ao analisar o JSON. Verifique a formatação da solicitação.'
+                ]);
             }
 
             $contactData = [
                 'name' => $request['name'] ?? null,
                 'description' => $request['description'] ?? null,
             ];
-            $this->db->table('contacts')->where('id', $id)->update($contactData);
 
-            if (isset($request['address'])) {
-                $addressData = array_merge($request['address'], ['id_contact' => $id]);
-                $this->db->table('address')->where('id_contact', $id)->update($addressData);
+            $this->db->transBegin();
+
+            try {
+                $this->db->table('contacts')->insert($contactData);
+                $contactId = $this->db->insertID();
+
+                $currentDateTime = date('Y-m-d H:i:s');
+
+                if (isset($request['address'])) {
+                    $addressData = array_merge($request['address'], ['id_contact' => $contactId, 'created_at' => $currentDateTime]);
+                    $this->db->table('address')->insert($addressData);
+                }
+
+                if (isset($request['phone'])) {
+                    $phoneData = array_merge($request['phone'], ['id_contact' => $contactId, 'created_at' => $currentDateTime]);
+                    $this->db->table('phone')->insert($phoneData);
+                }
+
+                if (isset($request['email'])) {
+                    $emailData = array_merge($request['email'], ['id_contact' => $contactId, 'created_at' => $currentDateTime]);
+                    $this->db->table('email')->insert($emailData);
+                }
+
+                $this->db->transCommit();
+                
+                return $this->response->setStatusCode(201)->setJSON([
+                    'status' => 'success',
+                    'message' => 'Contato criado com sucesso.',
+                    'contact_id' => $contactId
+                ]);
+            } catch (\Exception $e) {
+                $this->db->transRollback();
+                return $this->response->setStatusCode(500)->setJSON([
+                    'status' => 'error',
+                    'message' => 'Erro ao criar contato: ' . $e->getMessage()
+                ]);
             }
+        } catch (\Exception $e) {
+            return $this->response->setStatusCode(500)->setJSON([
+                'status' => 'error',
+                'message' => 'Houve um erro ao processar sua solicitação: ' . $e->getMessage()
+            ]);
+        }
+    }
 
-            if (isset($request['phone'])) {
-                $phoneData = $request['phone'];
-                $this->db->table('phone')->where('id_contact', $id)->update($phoneData);
+    public function update($id)
+    {   
+        try {
+
+            $request = $this->request->getJSON(true);
+
+            $this->db->transBegin();
+
+            try {
+
+                $contact = $this->db->table('contacts')->where('id', $id)->get()->getRow();
+                if (!$contact) {
+                    return $this->response->setStatusCode(404)
+                                        ->setJSON(['status' => 'error', 'message' => 'Contato não encontrado']);
+                }
+
+                $contactData = [
+                    'name' => $request['name'] ?? null,
+                    'description' => $request['description'] ?? null,
+                ];
+                $this->db->table('contacts')->where('id', $id)->update($contactData);
+
+                if (isset($request['address'])) {
+                    $addressData = array_merge($request['address'], ['id_contact' => $id]);
+                    $this->db->table('address')->where('id_contact', $id)->update($addressData);
+                }
+
+                if (isset($request['phone'])) {
+                    $phoneData = $request['phone'];
+                    $this->db->table('phone')->where('id_contact', $id)->update($phoneData);
+                }
+
+                if (isset($request['email'])) {
+                    $emailData = $request['email'];
+                    $this->db->table('email')->where('id_contact', $id)->update($emailData);
+                }
+
+                $this->db->transCommit();
+
+                return $this->response->setStatusCode(200)
+                      ->setJSON(['status' => 'success', 'message' => 'Contato atualizado com sucesso']);
+
+            } catch (DatabaseException $e) {
+                $this->db->transRollback();
+                return $this->response->setJSON(['status' => 'error', 'message' => $e->getMessage()]);
             }
-
-            if (isset($request['email'])) {
-                $emailData = $request['email'];
-                $this->db->table('email')->where('id_contact', $id)->update($emailData);
-            }
-
-            $this->db->transCommit();
-
-            return $this->response->setJSON(['status' => 'success', 'message' => 'Contato atualizado com sucesso']);
-        } catch (DatabaseException $e) {
+        }catch (\Exception $e) {
+            // Desfaz a transação em caso de erro
             $this->db->transRollback();
-            return $this->response->setJSON(['status' => 'error', 'message' => $e->getMessage()]);
+            return $this->response->setStatusCode(500)
+                                  ->setJSON(['status' => 'error', 'message' => 'Erro ao atualizar contato: ' . $e->getMessage()]);
         }
     }
 
