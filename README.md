@@ -89,3 +89,9 @@ php spark serve
 
 A aplicação estará disponível em http://localhost:8080.
 
+# Documentação da API
+
+Você pode visualizar a documentação da API no Postman [aqui](https://documenter.getpostman.com/view/32948611/2sAXjF9uoW).
+
+
+
