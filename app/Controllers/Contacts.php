@@ -5,87 +5,98 @@ namespace App\Controllers;
 use App\Controllers\BaseController;
 use CodeIgniter\HTTP\ResponseInterface;
 use CodeIgniter\Database\Exceptions\DatabaseException;
+use CodeIgniter\Cache\CacheInterface;
 
 class Contacts extends BaseController
-{      
+{
     protected $db;
+    protected $cache;
 
     public function __construct()
     {
         $this->db = \Config\Database::connect();
+        $this->cache = \Config\Services::cache();
     }
 
     public function index()
     {
-        try {
-            $builder = $this->db->table('contacts');
-            $builder->select('contacts.id as contact_id, contacts.name, contacts.description, 
-                              address.zip_code, address.country, address.state, address.street_address, address.address_number, address.city, address.address_line, address.neighborhood,
-                              phone.phone as phone_number,
-                              email.email as email_address');
-            $builder->join('address', 'contacts.id = address.id_contact', 'left');
-            $builder->join('phone', 'contacts.id = phone.id_contact', 'left');
-            $builder->join('email', 'contacts.id = email.id_contact', 'left');
-            $query = $builder->get();
-    
-            $results = $query->getResultArray();
-    
-            $contacts = [];
-    
-            foreach ($results as $row) {
-                $contactId = $row['contact_id'];
-    
-                if (!isset($contacts[$contactId])) {
-                    $contacts[$contactId] = [
-                        'name' => $row['name'],
-                        'description' => $row['description'],
-                        'address' => null,
-                        'phone' => null,
-                        'email' => null,
-                    ];
+        $cacheKey = 'contacts_list';
+
+        if ($this->cache->get($cacheKey)) {
+            $contacts = $this->cache->get($cacheKey);
+        } else {
+            try {
+                $builder = $this->db->table('contacts');
+                $builder->select('contacts.id as contact_id, contacts.name, contacts.description, 
+                                  address.zip_code, address.country, address.state, address.street_address, address.address_number, address.city, address.address_line, address.neighborhood,
+                                  phone.phone as phone_number,
+                                  email.email as email_address');
+                $builder->join('address', 'contacts.id = address.id_contact', 'left');
+                $builder->join('phone', 'contacts.id = phone.id_contact', 'left');
+                $builder->join('email', 'contacts.id = email.id_contact', 'left');
+                $query = $builder->get();
+        
+                $results = $query->getResultArray();
+        
+                $contacts = [];
+        
+                foreach ($results as $row) {
+                    $contactId = $row['contact_id'];
+        
+                    if (!isset($contacts[$contactId])) {
+                        $contacts[$contactId] = [
+                            'name' => $row['name'],
+                            'description' => $row['description'],
+                            'address' => null,
+                            'phone' => null,
+                            'email' => null,
+                        ];
+                    }
+        
+                    if ($row['zip_code']) {
+                        $contacts[$contactId]['address'] = [
+                            'zip_code' => $row['zip_code'],
+                            'country' => $row['country'],
+                            'state' => $row['state'],
+                            'street_address' => $row['street_address'],
+                            'address_number' => $row['address_number'],
+                            'city' => $row['city'],
+                            'address_line' => $row['address_line'],
+                            'neighborhood' => $row['neighborhood'],
+                        ];
+                    }
+        
+                    if ($row['phone_number']) {
+                        $contacts[$contactId]['phone'] = [
+                            'phone' => $row['phone_number'],
+                        ];
+                    }
+        
+                    if ($row['email_address']) {
+                        $contacts[$contactId]['email'] = [
+                            'email' => $row['email_address'],
+                        ];
+                    }
                 }
-    
-                if ($row['zip_code']) {
-                    $contacts[$contactId]['address'] = [
-                        'zip_code' => $row['zip_code'],
-                        'country' => $row['country'],
-                        'state' => $row['state'],
-                        'street_address' => $row['street_address'],
-                        'address_number' => $row['address_number'],
-                        'city' => $row['city'],
-                        'address_line' => $row['address_line'],
-                        'neighborhood' => $row['neighborhood'],
-                    ];
-                }
-    
-                if ($row['phone_number']) {
-                    $contacts[$contactId]['phone'] = [
-                        'phone' => $row['phone_number'],
-                    ];
-                }
-    
-                if ($row['email_address']) {
-                    $contacts[$contactId]['email'] = [
-                        'email' => $row['email_address'],
-                    ];
-                }
+                
+                $this->cache->save($cacheKey, $contacts, 300);
+                
+            } catch (\Exception $e) {
+                log_message('error', $e->getMessage());
+        
+                return $this->response->setStatusCode(500)->setJSON([
+                    'status' => 'error',
+                    'message' => 'Houve um erro ao processar sua solicitação.'
+                ]);
             }
-    
-            return $this->response->setStatusCode(200)->setJSON([
-                'status' => 'success',
-                'data' => array_values($contacts)
-            ]);
-            
-        } catch (\Exception $e) {
-            log_message('error', $e->getMessage());
-    
-            return $this->response->setStatusCode(500)->setJSON([
-                'status' => 'error',
-                'message' => 'Houve um erro ao processar sua solicitação.'
-            ]);
         }
+
+        return $this->response->setStatusCode(200)->setJSON([
+            'status' => 'success',
+            'data' => array_values($contacts)
+        ]);
     }
-    
+
     public function create()
     {
         try {
@@ -127,6 +138,8 @@ class Contacts extends BaseController
                 }
 
                 $this->db->transCommit();
+                
+                $this->cache->delete('contacts_list');
                 
                 return $this->response->setStatusCode(201)->setJSON([
                     'status' => 'success',
@@ -187,6 +200,8 @@ class Contacts extends BaseController
 
                 $this->db->transCommit();
 
+                $this->cache->delete('contacts_list');
+
                 return $this->response->setStatusCode(200)
                       ->setJSON(['status' => 'success', 'message' => 'Contato atualizado com sucesso']);
 
@@ -195,7 +210,6 @@ class Contacts extends BaseController
                 return $this->response->setJSON(['status' => 'error', 'message' => $e->getMessage()]);
             }
         }catch (\Exception $e) {
-            // Desfaz a transação em caso de erro
             $this->db->transRollback();
             return $this->response->setStatusCode(500)
                                   ->setJSON(['status' => 'error', 'message' => 'Erro ao atualizar contato: ' . $e->getMessage()]);
@@ -224,17 +238,12 @@ class Contacts extends BaseController
 
             $this->db->transCommit();
 
+            $this->cache->delete('contacts_list');
+
             return $this->response->setJSON(['status' => 'success', 'message' => 'Contato excluído com sucesso']);
         } catch (DatabaseException $e) {
             $this->db->transRollback();
-            return $this->response->setStatusCode(500)
-                                ->setJSON(['status' => 'error', 'message' => 'Erro no banco de dados: ' . $e->getMessage()]);
-        } catch (\Exception $e) {
-            $this->db->transRollback();
-            return $this->response->setStatusCode(500)
-                                ->setJSON(['status' => 'error', 'message' => 'Erro inesperado: ' . $e->getMessage()]);
+            return $this->response->setJSON(['status' => 'error', 'message' => $e->getMessage()]);
         }
     }
-
-    
 }
