@@ -21,8 +21,9 @@ class CreateAddressTable extends Migration
                 'unsigned'   => true,
             ],
             'zip_code' => [
-                'type'       => 'VARCHAR',
-                'constraint' => '10',
+                'type'       => 'INT',
+                'constraint' => '8',
+                'unsigned'   => true,
             ],
             'country' => [
                 'type'       => 'VARCHAR',
@@ -63,6 +64,7 @@ class CreateAddressTable extends Migration
             ],
         ]);
         $this->forge->addKey('id', true);
+        $this->forge->addKey('zip_code');
         $this->forge->addForeignKey('id_contact', 'contacts', 'id', 'CASCADE', 'CASCADE');
         $this->forge->createTable('address');
     }

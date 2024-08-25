@@ -34,6 +34,7 @@ class CreateEmailTable extends Migration
             ],
         ]);
         $this->forge->addKey('id', true);
+        $this->forge->addKey('email');
         $this->forge->addForeignKey('id_contact', 'contacts', 'id', 'CASCADE', 'CASCADE');
         $this->forge->createTable('email');
     }

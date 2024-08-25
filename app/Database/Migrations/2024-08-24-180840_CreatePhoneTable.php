@@ -21,8 +21,9 @@ class CreatePhoneTable extends Migration
                 'unsigned'   => true,
             ],
             'phone' => [
-                'type'       => 'VARCHAR',
-                'constraint' => '20',
+                'type'       => 'BIGINT',
+                'constraint' => 11,
+                'unsigned'   => true,
             ],
             'created_at' => [
                 'type' => 'DATETIME',
@@ -33,9 +34,13 @@ class CreatePhoneTable extends Migration
                 'null' => true,
             ],
         ]);
+        
         $this->forge->addKey('id', true);
+        $this->forge->addKey('id_contact');
+        $this->forge->addKey('phone');
         $this->forge->addForeignKey('id_contact', 'contacts', 'id', 'CASCADE', 'CASCADE');
         $this->forge->createTable('phone');
+        
     }
 
     public function down()
