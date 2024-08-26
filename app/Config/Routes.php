@@ -7,7 +7,7 @@ use CodeIgniter\Router\RouteCollection;
  */
 $routes->get('/', 'Home::index');
 
-$routes->get('contacts', 'Contacts::index');
-$routes->post('contacts', 'Contacts::create');
-$routes->put('contacts/(:num)', 'Contacts::update/$1');
-$routes->delete('contacts/(:num)', 'Contacts::delete/$1');
+$routes->get('contacts', 'ContactController::index');
+$routes->post('contacts', 'ContactController::create');
+$routes->put('contacts/(:num)', 'ContactController::update/$1');
+$routes->delete('contacts/(:num)', 'ContactController::delete/$1');

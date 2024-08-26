@@ -8,7 +8,7 @@ use CodeIgniter\Database\Exceptions\DatabaseException;
 use CodeIgniter\Cache\CacheInterface;
 use CodeIgniter\Validation\ValidationInterface;
 
-class Contacts extends BaseController
+class ContactController extends BaseController
 {
     protected $db;
     protected $cache;
