@@ -30,6 +30,7 @@
     },
     "autoload-dev": {
         "psr-4": {
+            "Tests\\": "tests/unit",
             "Tests\\Support\\": "tests/_support"
         }
     },
